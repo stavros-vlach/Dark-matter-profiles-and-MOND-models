@@ -43,7 +43,8 @@ matplotlib.use('TkAgg')
 GALAXY_NAME = "UGC02953"
 # GALAXY_NAME = 'IC2574'
 # GALAXY_NAME = "ESO138-G014"
-PROFILE = "Burkert"
+PROFILE = "Einasto"
+os.chdir(r"C:/Users/User\PycharmProjects\pythonProject\kwdikas")
 name = "Rotmod_LTG/" + GALAXY_NAME + "_rotmod.dat"
 fname = f'fit_{GALAXY_NAME}__{PROFILE}'
 R, V, Verr, Vgas, Vbul = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 5))
@@ -94,6 +95,10 @@ y_arr = np.array(V)
 err_y_arr = np.array(Verr)
 # ------------------------------------------------------------------ #
 
+def V_d(logMdisk):
+    diskV = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+    return diskV
+
 if PROFILE == "Burkert":
     ########################## Definition of profile specific constants ###########################
     labels = ["$log(M_{disk})$", "$log(\\rho_{0})$", "r0", "$Y_{disk}$"]
@@ -130,7 +135,7 @@ if PROFILE == "Burkert":
         print(x)
         Vhalo = np.sqrt((6.4 * G * (rho0 * (r0 ** 3)) / x_arr) * (np.log(1 + x_arr / r0) - np.arctan(x_arr / r0) +
                                                                   (1 / 2) * np.log(1 + (x_arr / r0) ** 2)))
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vdisk = V_d(logMdisk)
         V_th = np.sqrt(Vhalo ** 2 + Vdisk ** 2 + ynew ** 2)
 
         dist = y_arr - V_th
@@ -155,7 +160,7 @@ if PROFILE == "Burkert":
         Vhalo = np.sqrt((6.4 * G * (rho0 * (r0 ** 3)) / x_arr) * (np.log(1 + x_arr / r0) - np.arctan(x_arr / r0) +
                                                                   (1 / 2) * np.log(1 + (x_arr / r0) ** 2)))
 
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vdisk = V_d(logMdisk)
         V_th = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + ynew ** 2)
 
         dist = y_arr - V_th
@@ -185,7 +190,7 @@ if PROFILE == "Burkert":
         Vhalo = np.sqrt((6.4 * G * (rho0 * (r0 ** 3)) / x_arr) * (np.log(1 + x_arr / r0) - np.arctan(x_arr / r0) +
                                                                   (1 / 2) * np.log(1 + (x_arr / r0) ** 2)))
 
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vdisk = V_d(logMdisk)
 
         mean = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + ynew ** 2)
 
@@ -236,7 +241,7 @@ elif PROFILE == "NFW":
             return -np.inf
         Vhalo = calc_v_NFW_halo(x)
 
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vdisk = V_d(logMdisk)
         V_th = np.sqrt(Vhalo ** 2 + Vdisk ** 2 + ynew ** 2)
 
         dist = np.array(y_arr) - V_th
@@ -267,7 +272,7 @@ elif PROFILE == "NFW":
                 or not (0.001 < Y_disk < 1.2):
             return -np.inf
 
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vdisk = V_d(logMdisk)
 
         logrho0, rs, sigma = x[1], x[2], x[3]
         rho0 = 10 ** logrho0
@@ -298,7 +303,7 @@ elif PROFILE == "NFW":
         rho0 = 10 ** logrho0
         Vhalo = calc_v_NFW_halo(x)
 
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vdisk = V_d(logMdisk)
 
         mean = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + ynew ** 2)
 
@@ -310,11 +315,18 @@ elif PROFILE == "NFW":
 
     calc_halo = calc_v_NFW_halo
 
-'''elif PROFILE == "Einasto":
+elif PROFILE == "Einasto":
     np.savetxt("test.dat", [0, 0, 0, 0], fmt='%1.3f', newline=" ")
     with open("test.dat", 'w'):
         pass
 
+    labels = ["$log(M_{disk})$", "$log(\\rho_{0})$", "$R_{s}$", "$r_{s}$", "$\\alpha$", "$Y_{disk}$"]
+
+    means = np.array([10, 5, 20, 500, 5, 0.5])
+    optim_limits = [(5, 15), (5, 15), (0.1, 40), (0.1, 1000), (0.1, 10), (0.1, 2)]
+    text = f'Fit of {PROFILE} profile on {GALAXY_NAME} rot curve data from SPARC'
+    nwalkers = 2000
+    max_iters = 2500
 
     def func(beta, x):
         y = np.sqrt((0.5 * G * beta[0] * (3.2 * x ** 2) * (I0 * K0 - I1 * K1) / Rd) ** 2 +
@@ -326,22 +338,22 @@ elif PROFILE == "NFW":
         return y
 
 
-    def Einasto(rho0, Rs, rs, a):
+    def calc_v_Einasto_halo(Y):
+        logMdisk, logrho0, Rs, rs, a, Y_disk = Y
+        rho0 = 10 ** logrho0
         einastohalo = np.sqrt((G * 4 * np.pi * rho0 * (Rs ** 3) * np.exp(2 / a) * ((2 / a) ** (-3 / a)) * (1 / a) *
                                gammaincc(3 / a, (2 / a) * ((x_arr / rs) ** a)) * gamma(3 / a)) / x_arr)
         return einastohalo
 
 
     def lnprob_orthogonal(x):
-        logMdisk = x[0]
-
-        logrho0, Rs, rs, a, sigma = x[1], x[2], x[3], x[4], x[5]
+        logMdisk, logrho0, Rs, rs, a = x
         rho0 = 10 ** logrho0
         if not (0 < logMdisk) or not (0 < Rs < 50) or not (0 < rho0 < 10e9) or not (1 < rs < 10e3) \
                 or not (1 < a < 10) or not (1 < sigma < 100):
             return -np.inf
-        Vhalo = Einasto(rho0, Rs, rs, a)
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vhalo = calc_v_Einasto_halo(x)
+        Vdisk = V_d(logMdisk)
         V_th = np.sqrt(Vhalo ** 2 + Vdisk ** 2 + ynew ** 2)
 
         dist = np.array(y_arr) - V_th
@@ -361,14 +373,14 @@ elif PROFILE == "NFW":
 
     def lnprob_withYs(x):
 
-        logMdisk, logrho0, Rs, rs, a, Y_disk = x[0], x[1], x[2], x[3], x[4], x[5]
+        logMdisk, logrho0, Rs, rs, a, Y_disk = x
         rho0 = 10 ** logrho0
         if not (0 < logMdisk) or not (0 < Rs) or not (0 < rho0) or not (0 < rs) or not (
                 0.1 < a) or not (0.001 < Y_disk < 1.2):
             return -np.inf
 
-        Vhalo = Einasto(rho0, Rs, rs, a)
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vhalo = calc_v_Einasto_halo(x)
+        Vdisk = V_d(logMdisk)
         V_th = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + ynew ** 2)
 
         dist = np.array(y_arr) - V_th
@@ -388,14 +400,13 @@ elif PROFILE == "NFW":
 
     def chisq(x):
         
-        This is the x^2 function - the object function for minimization
+        #This is the x^2 function - the object function for minimization
         
-        logMdisk = x[0]
-        logrho0, Rs, rs, a, Y_disk = x[1], x[2], x[3], x[4], x[5]
+        logMdisk, logrho0, Rs, rs, a, Y_disk = x
         rho0 = 10 ** logrho0
-        Vhalo = Einasto(rho0, Rs, rs, a)
+        Vhalo = calc_v_Einasto_halo(x)
 
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vdisk = V_d(logMdisk)
 
         mean = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + ynew ** 2)
         dist = np.array(y_arr) - mean
@@ -405,123 +416,32 @@ elif PROFILE == "NFW":
         return res
 
 
-    res = differential_evolution(chisq, [(1, 15), (0.1, 11), (0.1, 40), (0.1, 1000), (0.1, 10), (0.1, 2)], args=(),
-                                 strategy='best1bin')
-    print(res)
-    pars_mean = res.x
+    calc_halo = calc_v_Einasto_halo
 
-    logMdisk, logrho0, Rs, rs, a = pars_mean[0], pars_mean[1], pars_mean[2], pars_mean[3], pars_mean[4]
-    rho0 = 10 ** logrho0
-    Vhalo = Einasto(rho0, Rs, rs, a)
-    Y_disk = pars_mean[5]
-    Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
-
-    V_th = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + ynew ** 2)
-
-    plt.plot(x, V_th, 'red')
-    plt.errorbar(x, y, yerr=np.array(err_y))
-    plt.ylabel('$V(km/s)$')
-    plt.xlabel('$R(kpc)$')
-    plt.savefig('fit_results-beforeMCMC.pdf')
-
-    beta = res.x
-    x = np.array(x)
-    y = np.array(y)
-    err_x = np.array(err_x)
-    err_y = np.array(err_y)
-
-    a_ODR = beta[0]
-    b_ODR = beta[1]
-    c_ODR = beta[2]
-    d_ODR = beta[3]
-    e_ODR = beta[4]
-    f_ODR = beta[5]
-    res_ODR = (y - V_th)
-
-    rms_ODR = np.sqrt(np.mean(res_ODR ** 2., dtype=np.float64))  # observed scatter
-    s_ODR = np.sqrt(rms_ODR ** 2. - np.mean(err_y) ** 2.)  # estimate of intrinsic scatter
-
-    nwalkers = 200
-
-    ndim = 6
-
-    max_iters = 800
-
-    p0 = []
-    for i in range(nwalkers):
-        pi = [np.random.normal(a_ODR, 0.01), np.random.normal(b_ODR, 0.01), np.random.normal(c_ODR, 0.01),
-              np.random.normal(d_ODR, 0.01), np.random.normal(e_ODR, 0.01),
-              # np.random.normal(rms_ODR, rms_ODR/10.),\
-              np.random.normal(0.5, 0.001)]
-        p0.append(pi)
-
-    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob_withYs)
-
-    for sample in sampler.sample(p0, iterations=max_iters, progress=True):
-
-        if sampler.iteration % 100:
-            continue
-
-    samples = sampler.chain[:, int(0.3 * max_iters):, :].reshape((-1, ndim))
-
-    labels = ["$log(M_{disk})$", "$log(\\rho_{0})$", "$R_{s}$", "$r_{s}$", "$\\alpha$", "$\\sigma$"]
-
-    fname = 'test'
-    ax = plt.figure()
-    bs = 40
-    ax = corner.corner(samples, plot_contours=True, fill_contours=True, plot_datapoints=False,
-                       show_titles=True, bins=bs, levels=[0., 0.6827, 0.9545, 0.9973], labels=labels, title_fmt=".4f")
-    ax.savefig(fname + '.pdf')
-    plt.close()
-
-    text = ''
-    n = data_length - ndim
-    multi_time = 0
-    ut.log_maker(sampler, n, multi_time, fname, labels, sxolia=text, b=0.3, fname_auto='')
-
-
-    def plot_result(x, y, yerrs, sampler):
-        b = 0.3
-        nwalkers, states, nparams = sampler.chain.shape
-        pars_mean = []
-        burn_in = int(sampler.chain.shape[1] * b)
-        for i in range(nparams):
-            mcmc = np.percentile(sampler.get_chain(discard=burn_in, thin=1, flat=True)[:, i], [15.87, 50, 84.13])
-            pars_mean.append(mcmc[1])
-            q = np.diff(mcmc)
-
-        logMdisk, logrho0, Rs, rs, a, Y_disk = pars_mean[0], pars_mean[1], pars_mean[2], pars_mean[3], pars_mean[4], \
-                                               pars_mean[5]
-        rho0 = 10 ** logrho0
-        Vhalo = Einasto(rho0, Rs, rs, a)
-
-        Rd = distance()
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
-        V_th = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + ynew ** 2)
-        ################################################
-        plt.plot(x, V_th, 'red')
-        plt.errorbar(x, y, yerr=yerrs)
-        plt.ylabel('$V(km/s)$')
-        plt.xlabel('$R(kpc)$')
-        plt.savefig('fit_results-afterMCMC.pdf')
-
-
-    plot_result(x_arr, y_arr, err_y, sampler)
 elif PROFILE == "Iso":
-    def Iso(rho0, Rc):
+
+    labels = ["$log(M_{disk})$", "$log(\\rho_{0})$", "$R_{c}$", "$Y_{disk}$"]
+    means = np.array([10, 5, 5, 0.5])
+    optim_limits = [(5, 15), (5, 15), (0.1, 20), (0.0, 3.0)]
+    text = f'Fit of {PROFILE} profile on {GALAXY_NAME} rot curve data from SPARC'
+    nwalkers = 2000
+    max_iters = 2500
+
+
+    def calc_v_Iso_halo(Y):
+        logMdisk, logrho0, Rc, Y_disk = Y
+        rho0 = 10 ** logrho0
         isohalo = np.sqrt(4 * np.pi * G * rho0 * (Rc ** 2) * (1 - (Rc / x_arr) * np.arctan(x_arr / Rc)))
         return isohalo
 
 
     def lnprob_orthogonal(x):
-        logMdisk = x[0]
-
-        logrho0, Rc, sigma = x[1], x[2], x[3]
+        logMdisk, logrho0, Rc = x
         rho0 = 10 ** logrho0
         if not (0 < logMdisk) or not (0 < Rc) or not (1 < sigma < 100):
             return -np.inf
-        Vhalo = Iso(rho0, Rc)
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vhalo = calc_v_Iso_halo(x)
+        Vdisk = V_d(logMdisk)
         V_th = np.sqrt(Vhalo ** 2 + Vdisk ** 2 + ynew ** 2)
 
         dist = np.array(y_arr) - V_th
@@ -541,13 +461,13 @@ elif PROFILE == "Iso":
 
     def lnprob_withYs(x):
 
-        logMdisk, logrho0, Rc, Y_disk = x[0], x[1], x[2], x[3]
+        logMdisk, logrho0, Rc, Y_disk = x
         rho0 = 10 ** logrho0
         if not (0 < logMdisk) or not (0 < Rc) or not (0.001 < Y_disk < 1.2):
             return -np.inf
 
         Vhalo = Iso(rho0, Rc)
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vdisk = V_d(logMdisk)
         V_th = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + ynew ** 2)
 
         dist = np.array(y_arr) - V_th
@@ -567,15 +487,14 @@ elif PROFILE == "Iso":
 
     def chisq(x):
         
-        This is the x^2 function - the object function for minimization
+        #This is the x^2 function - the object function for minimization
 
         
-        logMdisk = x[0]
-        logrho0, Rc, Y_disk = x[1], x[2], x[3]
+        logMdisk, logrho0, Rc, Y_disk = x
         rho0 = 10 ** logrho0
-        Vhalo = Iso(rho0, Rc)
+        Vhalo = calc_v_Iso_halo(x)
 
-        Vdisk = np.sqrt(0.5 * G * (10 ** logMdisk) * ((3.2 * (x_arr / (3.2 * Rd))) ** 2) * (I0 * K0 - I1 * K1) / Rd)
+        Vdisk = V_d(logMdisk)
 
         mean = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + ynew ** 2)
 
@@ -586,7 +505,7 @@ elif PROFILE == "Iso":
         return res
 
 
-    res = differential_evolution(chisq, [(5, 15), (5, 10), (1e-3, 1000), (0.01, 1.2)], args=(), strategy='best1bin')'''
+    calc_halo = calc_v_Iso_halo
 
 ############ General stuff for all profiles ###########
 ndim = len(labels)
