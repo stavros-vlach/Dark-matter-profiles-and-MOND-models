@@ -40,34 +40,34 @@ matplotlib.use('TkAgg')
 # [4] There are inline comments for additions/modifications.
 # [5] code style -- use this tool to check it: https://pypi.org/project/pylint/
 labels = ["Galaxy",
-"Hubble Type",
-"Distance (Mpc)",
-"Mean D error (Mpc)",
-"Distance Method",
-"Inclination (deg)",
-"Mean Inc error (deg)" ,
-"Total Luminosity at [3.6](10+9solLum)",
-"Effective Radius at [3.6](kpc)",
-"Effective Surface Brightness at [3.6](solLum/pc2)",
-"Disk Scale Length at [3.6] (kpc)",
-"Disk Central Surface Brightness at [3.6] (solLum/pc2)",
-"Total HI mass (10+9solMass)",
-"HI radius at 1 Msun/pc2 (kpc)",
-"Asymptotically Flat Rotation Velocity(km/s)",
-"Mean Vflat error (km/s)",
-"Mean error on Vflat (km/s)",
-"Quality Flag (3)",
-"Refs"]
+          "Hubble Type",
+          "Distance (Mpc)",
+          "Mean D error (Mpc)",
+          "Distance Method",
+          "Inclination (deg)",
+          "Mean Inc error (deg)",
+          "Total Luminosity at [3.6](10+9solLum)",
+          "Effective Radius at [3.6](kpc)",
+          "Effective Surface Brightness at [3.6](solLum/pc2)",
+          "Disk Scale Length at [3.6] (kpc)",
+          "Disk Central Surface Brightness at [3.6] (solLum/pc2)",
+          "Total HI mass (10+9solMass)",
+          "HI radius at 1 Msun/pc2 (kpc)",
+          "Asymptotically Flat Rotation Velocity(km/s)",
+          "Mean Vflat error (km/s)",
+          "Mean error on Vflat (km/s)",
+          "Quality Flag (3)",
+          "Refs"]
 ##########################################################################################
 # GALAXY_NAME = input("galaxy name = ")
-#GALAXY_NAME = "UGC02953"
-#GALAXY_NAME = 'IC2574'
-GALAXY_NAME = "ESO563-G021"
+GALAXY_NAME = "UGC02953"
+# GALAXY_NAME = 'IC2574'
+# GALAXY_NAME = "ESO563-G021"
 PROFILE = "Burkert"
-#os.chdir(r"C:/Users/User\PycharmProjects\pythonProject\kwdikas")
+# os.chdir(r"C:/Users/User\PycharmProjects\pythonProject\kwdikas")
 name = "Rotmod_LTG/" + GALAXY_NAME + "_rotmod.dat"
 fname = f'newPar_fit_{GALAXY_NAME}__{PROFILE}'
-R, V, Verr, Vgas, Vbul, Vdisk,  = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5))
+R, V, Verr, Vgas, Vbul, Vdisk, = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5))
 D = open(name, "r")
 D = (D.readline().split('=')[1])
 D = D.split()
@@ -75,11 +75,11 @@ D = float(D[0])
 
 # The full dataset of http://astroweb.cwru.edu/SPARC/SPARC_Lelli2016c.mrt,
 # with minor changes for parsing
-data = pd.read_csv('data.txt',delimiter=';',skiprows=98, names=labels)
+data = pd.read_csv('data.txt', delimiter=';', skiprows=98, names=labels)
 # print(data.iloc[1])
 # print(stop)
-data = data[data['Galaxy']==GALAXY_NAME]
-i_set = data["Inclination (deg)"].to_numpy()[0] * np.pi/180
+data = data[data['Galaxy'] == GALAXY_NAME]
+i_set = data["Inclination (deg)"].to_numpy()[0] * np.pi / 180
 D_quot = data["Distance (Mpc)"].to_numpy()[0]
 # print(D_quot)
 # print(stop)
@@ -138,39 +138,39 @@ err_y_arr = np.array(Verr)
 
 if PROFILE == "Burkert":
     ########################## Definition of profile specific constants ###########################
-    labels = ["$i_{fit}$","$D_{fit}$", "$Y_{disk}$", "$C_{200}$", "$V_{200}$"]
+    labels = ["$i_{fit}$", "$D_{fit}$", "$Y_{disk}$", "$C_{200}$", "$V_{200}$"]
     means = np.array([10, 0.5, 200, 500, 250])
-    optim_limits = [(10, 90), (1, 190), (0.1, 0.8), (10, 900), (10, 900)]
+    optim_limits = [(10, 90), (1, 150), (0.1, 1), (1, 900), (1, 500)]
     text = f'Fit of {PROFILE} profile on {GALAXY_NAME} rot curve data from SPARC'
-    nwalkers = 2000
+    nwalkers = 200
     max_iters = 2500
 
 
     ###############################################################################################
     def func(beta, x):
         r = x_par(x_arr, beta[2])
-        y = np.sqrt(beta[0] / r) * np.sqrt((1/2 * np.log(1+r**2) + np.log(1+r) - np.arctan(r)) /
-                                    (1/2 * np.log(1+beta[0]**2) + np.log(1+beta[0]) - np.arctan(beta[0]))) * beta[1]
+        y = np.sqrt(beta[0] / r) * np.sqrt((1 / 2 * np.log(1 + r ** 2) + np.log(1 + r) - np.arctan(r)) /
+                                           (1 / 2 * np.log(1 + beta[0] ** 2) + np.log(1 + beta[0]) - np.arctan(
+                                               beta[0]))) * beta[1]
         y = np.array(y)
         return y
 
 
     def calc_v_burkert_halo(quant200):
-        _,_,_,C200, V200 = quant200
+        _, _, _, C200, V200 = quant200
         # r = x_par(x_arr, r_s)
-        # Fotis: function calls are slow, so we avoide them if its free - no extra code ugliness 
-        r_s = V200/(10*C200*HO)
+        # Fotis: function calls are slow, so we avoide them if its free - no extra code ugliness
+        r_s = V200 / (10 * C200 * HO)
         x = x_arr / r_s
-        M = 2*np.pi*(r_s**3) *(0.5*np.log(1+x**2) + np.log(x+1) - np.arctan(x))
+        M = 2 * np.pi * (r_s ** 3) * (0.5 * np.log(1 + x ** 2) + np.log(x + 1) - np.arctan(x))
         # Fotis: The following defs are generic for all models
         # rho = np.exp(logrho_s)/(1+x**2)
         # r200 = (3*M/(4*np.pi*rho))**(1/3)
         # C_200 = r200 / r_s
         # V_200 = 10 * C_200 * r_s * HO
-        
 
-        burkert_v = (V200*C200 / x)* np.sqrt((1/2 * np.log(1+x**2) + np.log(1+x) - np.arctan(x)) /
-                                    (1/2 * np.log(1+C200**2) + np.log(1+C200) - np.arctan(C200))) 
+        burkert_v = (V200 * C200 / x) * np.sqrt((1 / 2 * np.log(1 + x ** 2) + np.log(1 + x) - np.arctan(x)) /
+                                                (1 / 2 * np.log(1 + C200 ** 2) + np.log(1 + C200) - np.arctan(C200)))
         return burkert_v
 
 
@@ -198,17 +198,17 @@ if PROFILE == "Burkert":
     def lnprob_withYs(x):
         # Parametrized according to https://iopscience.iop.org/article/10.3847/0004-6256/152/6/157/pdf
         i_fit, D_fit, Y_disk, C200, V200 = x
-        if not (20 <= i_fit <= 90) or not (1 < D_fit < 800) or not(1 < C200 < 900)\
-                or not (0.1 <= Y_disk < 0.6) or not (0.01 < V200 < 900):
+        if not (10 <= i_fit <= 90) or not (1 < D_fit < 150) or not (1 < C200 < 900) \
+                or not (0.1 <= Y_disk < 1) or not (0.01 < V200 < 500):
             return -np.inf
 
         Vhalo = calc_v_burkert_halo(x)
 
         # Vdisk = V_d(logMdisk)
-        V_th = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + Vgas ** 2) * np.sqrt(D_fit/D_quot)
+        V_th = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + Vgas ** 2) * np.sqrt(D_fit / D_quot)
         # print(f'v_theor: {V_th}')
         # print(f'V_obs: {y_arr*np.sin(i_fit*np.pi/180)/np.sin(i_set)}')
-        dist = y_arr*np.sin(i_fit*np.pi/180)/np.sin(i_set) - V_th
+        dist = y_arr * np.sin(i_fit * np.pi / 180) / np.sin(i_set) - V_th
         sigma = 0
         error = np.sqrt(err_y_arr ** 2 + sigma ** 2)
         chi_sq = dist * dist / (error ** 2)
@@ -236,9 +236,9 @@ if PROFILE == "Burkert":
 
         # Vdisk = V_d(logMdisk)
 
-        mean = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + Vgas ** 2)* np.sqrt(D_fit/D_quot)
+        mean = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + Vgas ** 2) * np.sqrt(D_fit / D_quot)
 
-        dist = np.array(y_arr*np.sin(i_fit*np.pi/180)/np.sin(i_set)) - mean
+        dist = np.array(y_arr * np.sin(i_fit * np.pi / 180) / np.sin(i_set)) - mean
         sigma_squared = np.power(err_y_arr, 2)
         chi_sq = dist * dist / sigma_squared
         res = np.sum(chi_sq)
@@ -264,12 +264,12 @@ D_fit = res.x[1]
 i_fit = res.x[0]
 Vhalo = calc_halo(res.x)
 ### FOTIS: AGAIN VERY DANGEROUS!!-assuming that the first parameter will be logMdisk for all profiles.
-logMdisk = res.x[0]
+#logMdisk = res.x[0]
 # Vdisk = V_d(logMdisk)
-V_th = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2)* np.sqrt(D_fit/D_quot)
+V_th = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2) * np.sqrt(D_fit / D_quot)
 ####### Plot the results of the initial optimizer, this could be a function #####
 plt.plot(x, V_th, 'red')
-plt.errorbar(x, y*np.sin(i_fit*np.pi/180)/np.sin(i_set), yerr=np.array(err_y))
+plt.errorbar(x, y * np.sin(i_fit * np.pi / 180) / np.sin(i_set), yerr=np.array(err_y))
 plt.ylabel('$V(km/s)$')
 plt.xlabel('$R(kpc)$')
 plt.savefig(fname + '_fit_results-beforeMCMC_new.pdf')
@@ -289,10 +289,10 @@ def plot_result(x, y, yerrs, sampler):
     D_fit = pars_mean[1]
     i_fit = pars_mean[0]
     Vhalo = calc_halo(pars_mean)
-    V_th = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + Vgas ** 2)* np.sqrt(D_fit/D_quot)
+    V_th = np.sqrt(Vhalo ** 2 + Y_disk * Vdisk ** 2 + Vgas ** 2) * np.sqrt(D_fit / D_quot)
     ################################################
     plt.plot(x, V_th, 'red')
-    plt.errorbar(x, y*np.sin(i_fit*np.pi/180)/np.sin(i_set), yerr=yerrs)
+    plt.errorbar(x, y * np.sin(i_fit * np.pi / 180) / np.sin(i_set), yerr=yerrs)
     plt.ylabel('$V(km/s)$')
     plt.xlabel('$R(kpc)$')
     plt.savefig(fname + '_fit_results-afterMCMC.pdf')
