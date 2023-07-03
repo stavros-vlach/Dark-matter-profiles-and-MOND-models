@@ -142,7 +142,7 @@ if PROFILE == "Burkert":
     means = np.array([10, 0.5, 200, 500, 250])
     optim_limits = [(10, 90), (1, 150), (0.1, 1), (1, 900), (1, 500)]
     text = f'Fit of {PROFILE} profile on {GALAXY_NAME} rot curve data from SPARC'
-    nwalkers = 200
+    nwalkers = 2000
     max_iters = 2500
 
 
