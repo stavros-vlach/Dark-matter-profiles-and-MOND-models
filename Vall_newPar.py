@@ -169,7 +169,7 @@ if PROFILE == "Burkert":
         # C_200 = r200 / r_s
         # V_200 = 10 * C_200 * r_s * HO
 
-        burkert_v = (V200 * C200 / x) * np.sqrt((1 / 2 * np.log(1 + x ** 2) + np.log(1 + x) - np.arctan(x)) /
+        burkert_v = (V200 * np.sqrt(C200 / x)) * np.sqrt((1 / 2 * np.log(1 + x ** 2) + np.log(1 + x) - np.arctan(x)) /
                                                 (1 / 2 * np.log(1 + C200 ** 2) + np.log(1 + C200) - np.arctan(C200)))
         return burkert_v
 
