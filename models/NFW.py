@@ -34,7 +34,7 @@ labels = ["Galaxy",
 # GALAXY_NAME = 'NGC0300'
 # GALAXY_NAME = "ESO563-G021"
 GALAXY_NAME = "UGC08490"
-name = "/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/Rotmod_LTG/" + GALAXY_NAME + "_rotmod.dat"
+name = "/Rotmod_LTG/" + GALAXY_NAME + "_rotmod.dat"
 
 R, V, Verr, Vgas, Vbul, Vdisk = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5))
 data_length = len(R)
