@@ -40,11 +40,11 @@ matplotlib.use('TkAgg')
 # [5] code style -- use this tool to check it: https://pypi.org/project/pylint/
 ##########################################################################################
 # GALAXY_NAME = input("galaxy name = ")
-GALAXY_NAME = "UGC02953"
+GALAXY_NAME = "NGC0024"
 # GALAXY_NAME = 'IC2574'
 # GALAXY_NAME = "ESO138-G014"
-PROFILE = "Einasto"
-os.chdir(r"C:/Users/User\PycharmProjects\pythonProject\kwdikas")
+PROFILE = "Burkert"
+# os.chdir(r"C:/Users/User\PycharmProjects\pythonProject\kwdikas")
 name = "Rotmod_LTG/" + GALAXY_NAME + "_rotmod.dat"
 fname = f'fit_{GALAXY_NAME}__{PROFILE}'
 R, V, Verr, Vgas, Vbul = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 5))
@@ -102,10 +102,10 @@ def V_d(logMdisk):
 if PROFILE == "Burkert":
     ########################## Definition of profile specific constants ###########################
     labels = ["$log(M_{disk})$", "$log(\\rho_{0})$", "r0", "$Y_{disk}$"]
-    means = np.array([10, 5, 5, 0.5])
-    optim_limits = [(5, 15), (5, 15), (0.1, 20), (0.0, 3.0)]
+    means = np.array([10, 5, 5, 0.2])
+    optim_limits = [(5, 15), (5, 15), (0.1, 20), (0.0, 1.0)]
     text = f'Fit of {PROFILE} profile on {GALAXY_NAME} rot curve data from SPARC'
-    nwalkers = 2000
+    nwalkers = 2500
     max_iters = 2500
 
 
@@ -152,8 +152,8 @@ if PROFILE == "Burkert":
     def lnprob_withYs(x):
         logMdisk, logrho0, r0, Y_disk = x
 
-        if not (0 < logMdisk < 20) or not (0 < r0 < 30) or not (0 < logrho0 < 20) \
-                or not (0.01 < Y_disk < 0.6):
+        if not (5 < logMdisk < 15) or not (5 < r0 < 15) or not (1 < logrho0 < 15) \
+                or not (0.05 < Y_disk < 0.3):
             return -np.inf
 
         rho0 = 10 ** logrho0
@@ -570,7 +570,7 @@ for i in range(nwalkers):
     for j in range(len(labels)):
         means.append(res.x[j])
         if j == len(res.x) - 1:
-            errs.append(0.01)
+            errs.append(0.0001)
         else:
             errs.append(res.x[j] * 0.001)
     p_i = np.random.normal(means, errs)
