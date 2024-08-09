@@ -33,10 +33,66 @@ labels = ["Galaxy",
 
 #constants
 G = 4.3e-6
+Y_hat_star = 0.5
+sigma_Y_star = 0.25 * Y_hat_star
 
-path = "/Rotmod_LTG/"
+#Model as in https://iopscience.iop.org/article/10.3847/2041-8213/ac1bb7
+def einasto_velocity_squared(r, logrho0, logRs, a):
+    rho0 = 10 ** logrho0
+    Rs = 10 ** logRs
+    prefactor = 4 * np.pi * rho0 * Rs**3 * np.exp(2/a) * (2/a)**(-3/a) / a
+    M_einasto = prefactor * gamma(3/a) * gammainc(3/a, 2/a * (r/Rs)**a)
+    return G * M_einasto / r
+
+
+def total_velocity_squared(Y_star, logrho0, logRs, a):
+    v_star_sq = Y_star * v_disk_sq + 1.4 * Y_star * v_bulge_sq
+    v_halo_sq = einasto_velocity_squared(r, logrho0, logRs, a)
+    return v_star_sq + v_gas_sq + v_halo_sq
+
+def log_prior(Y_star, logrho0, logRs, a):
+    """Define the log prior."""
+    rho0 = 10 ** logrho0
+    Rs = 10 ** logRs
+    if 0 < Y_star < 1 and 0 < rho0 < 1e9 and 0 < Rs < 1e8 and 0 < a < 20:
+        return 0.0
+    return -np.inf
+
+def log_likelihood(theta):
+    """Define the log likelihood."""
+    Y_star, logrho0, logRs, a = theta
+    v_model_sq = total_velocity_squared(Y_star, logrho0, logRs, a)
+    chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
+    chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
+    return -0.5 * chi_sq
+
+def log_probability(theta):
+    """Define the log probability function for emcee."""
+    Y_star, logrho0, logRs, a = theta
+    lp = log_prior(Y_star, logrho0, logRs, a)
+    if not np.isfinite(lp):
+        return -np.inf
+    return lp + log_likelihood(theta)
+
+def chi_square(theta):
+    Y_star, logrho0, logRs, a = theta
+    v_model_sq = total_velocity_squared(Y_star, logrho0, logRs, a)
+    
+    chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
+    chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
+    return chi_sq / (len(r) - len(theta))
+
+#bounds for differential_evolution
+bounds = [(0, 1), (0, 10), (0, 10), (1e-2, 10)]
+
+#parameters for emcee
+ndim = 4
+nwalkers = 100
+nsteps = 1000
+	
+path = "/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/Rotmod_LTG/"
 for GALAXY_NAME in os.listdir(path):
-	name = "/Rotmod_LTG/" + GALAXY_NAME
+	name = path + GALAXY_NAME
 	R, V, Verr, Vgas, Vbul, Vdisk = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5))
 	data_length = len(R)
 	
@@ -57,65 +113,13 @@ for GALAXY_NAME in os.listdir(path):
 	Lb = Lb[Lb['Galaxy'] == GALAXY_NAME]
 	L_bul = Lb['Lbul (10^9 Lsun)'].to_numpy()[0]
 
-
-
-	#Model as in https://iopscience.iop.org/article/10.3847/2041-8213/ac1bb7
-	def einasto_velocity_squared(r, logrho0, logRs, a):
-	    rho0 = 10 ** logrho0
-	    Rs = 10 ** logRs
-	    prefactor = 4 * np.pi * rho0 * Rs**3 * np.exp(2/a) * (2/a)**(-3/a) / a
-	    M_einasto = prefactor * gamma(3/a) * gammainc(3/a, 2/a * (r/Rs)**a)
-	    return G * M_einasto / r
-
-    
-	def total_velocity_squared(Y_star, logrho0, logRs, a):
-	    v_star_sq = Y_star * v_disk_sq + 1.4 * Y_star * v_bulge_sq
-	    v_halo_sq = einasto_velocity_squared(r, logrho0, logRs, a)
-	    return v_star_sq + v_gas_sq + v_halo_sq
-
-	def log_prior(Y_star, logrho0, logRs, a):
-	    """Define the log prior."""
-	    rho0 = 10 ** logrho0
-	    Rs = 10 ** logRs
-	    if 0 < Y_star < 1 and 0 < rho0 < 1e9 and 0 < Rs < 1e8 and 0 < a < 20:
-	        return 0.0
-	    return -np.inf
-
-	def log_likelihood(theta):
-	    """Define the log likelihood."""
-	    Y_star, logrho0, logRs, a = theta
-	    v_model_sq = total_velocity_squared(Y_star, logrho0, logRs, a)
-	    chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
-	    chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
-	    return -0.5 * chi_sq
-
-	def log_probability(theta):
-	    """Define the log probability function for emcee."""
-	    Y_star, logrho0, logRs, a = theta
-	    lp = log_prior(Y_star, logrho0, logRs, a)
-	    if not np.isfinite(lp):
-	        return -np.inf
-	    return lp + log_likelihood(theta)
-    
-	def chi_square(theta):
-	    Y_star, logrho0, logRs, a = theta
-	    v_model_sq = total_velocity_squared(Y_star, logrho0, logRs, a)
-	    
-	    chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
-	    chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
-	    return chi_sq / (len(r) - len(theta))
-
 	r = np.array(R)
 	v_obs = np.array(V)
 	v_err = np.array(Verr)
 	v_disk_sq = np.array(Vdisk)**2
 	v_bulge_sq = np.array(Vbul)**2
 	v_gas_sq = np.array(Vgas)**2
-	Y_hat_star = 0.5
-	sigma_Y_star = 0.25 * Y_hat_star
 
-
-	bounds = [(0, 1), (0, 10), (0, 10), (1e-2, 10)]
 	result = differential_evolution(chi_square, bounds)
 	best_fit_params = result.x
 	print(result)
@@ -129,20 +133,18 @@ for GALAXY_NAME in os.listdir(path):
 	plt.ylabel('$V(km/s)$')
 	plt.xlabel('$R(kpc)$')
 	plt.legend()
-	plt.savefig(GALAXY_NAME + ' fit_results-beforeMCMC.pdf')
+	plt.savefig("/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/de/" + GALAXY_NAME + ' fit_results-beforeMCMC.pdf')
 	plt.close()
 
-	ndim = len(best_fit_params)
-	nwalkers = 100
-	nsteps = 1000
 	pos = best_fit_params + 1e-4 * np.random.randn(nwalkers, ndim)
+	# Set up the sampler
 	sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability)
 	sampler.run_mcmc(pos, nsteps, progress=True)
 	samples = sampler.get_chain(discard=100, thin=10, flat=True)
 
 	# Create a corner plot
 	fig = corner.corner(samples, labels=["$Y_\\star$", "$log\\rho_0$", "$logR_s$", "$a$"], truths=[Y_hat_star, 0, 0, 0])
-	fig.savefig(GALAXY_NAME + "fit_corner.pdf")
+	fig.savefig("/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/de/" + GALAXY_NAME + "fit_corner.pdf")
 	plt.close()
 
 	Y_star_mcmc, logrho0_mcmc, logRs_mcmc, a_mcmc = np.percentile(samples, 50, axis=0)
@@ -169,4 +171,5 @@ for GALAXY_NAME in os.listdir(path):
 	plt.xlabel('Radius (kpc)')
 	plt.ylabel('Velocity (km/s)')
 	plt.legend()
-	plt.savefig(GALAXY_NAME + ' fit_results-afterMCMC.pdf')
+	plt.savefig("/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/de/" + GALAXY_NAME + ' fit_results-afterMCMC.pdf')
+	plt.close()
