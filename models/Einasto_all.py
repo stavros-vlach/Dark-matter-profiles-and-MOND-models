@@ -90,7 +90,7 @@ ndim = 4
 nwalkers = 100
 nsteps = 1000
 	
-path = "/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/Rotmod_LTG/"
+path = "/Rotmod_LTG/"
 for GALAXY_NAME in os.listdir(path):
 	name = path + GALAXY_NAME
 	R, V, Verr, Vgas, Vbul, Vdisk = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5))
@@ -133,7 +133,7 @@ for GALAXY_NAME in os.listdir(path):
 	plt.ylabel('$V(km/s)$')
 	plt.xlabel('$R(kpc)$')
 	plt.legend()
-	plt.savefig("/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/de/" + GALAXY_NAME + ' fit_results-beforeMCMC.pdf')
+	plt.savefig(GALAXY_NAME + ' fit_results-beforeMCMC.pdf')
 	plt.close()
 
 	pos = best_fit_params + 1e-4 * np.random.randn(nwalkers, ndim)
@@ -144,7 +144,7 @@ for GALAXY_NAME in os.listdir(path):
 
 	# Create a corner plot
 	fig = corner.corner(samples, labels=["$Y_\\star$", "$log\\rho_0$", "$logR_s$", "$a$"], truths=[Y_hat_star, 0, 0, 0])
-	fig.savefig("/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/de/" + GALAXY_NAME + "fit_corner.pdf")
+	fig.savefig(GALAXY_NAME + "fit_corner.pdf")
 	plt.close()
 
 	Y_star_mcmc, logrho0_mcmc, logRs_mcmc, a_mcmc = np.percentile(samples, 50, axis=0)
@@ -171,5 +171,5 @@ for GALAXY_NAME in os.listdir(path):
 	plt.xlabel('Radius (kpc)')
 	plt.ylabel('Velocity (km/s)')
 	plt.legend()
-	plt.savefig("/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/de/" + GALAXY_NAME + ' fit_results-afterMCMC.pdf')
+	plt.savefig(GALAXY_NAME + ' fit_results-afterMCMC.pdf')
 	plt.close()
