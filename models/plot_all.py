@@ -9,7 +9,7 @@ import os
 G = 4.3e-6
 a0 = 3702.81 #from 1.2 * 10 ^ {-10} m / s^2 to km^2 / s^2 / kpc
 
-path = "/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/Rotmod_LTG/"
+path = "/Rotmod_LTG/"
 	
 df_NFW = pd.read_csv("parameters_NFW.csv")
 df_MOND = pd.read_csv("parameters_MOND.csv")
@@ -20,7 +20,6 @@ def NFW_v_halo(Y_star, rho0, Rs):
 	x = r / Rs
 	M_NFW = 4 * np.pi * rho0 * Rs**3 * (np.log(1 + x) - x / (1 + x))
 	return G * M_NFW / r
-	
 	
 def einasto_v_halo(Y_star, rho0, Rs, a):
 	prefactor = 4 * np.pi * rho0 * Rs**3 * np.exp(2/a) * (2/a)**(-3/a) / a
@@ -52,8 +51,6 @@ def mond_velocity_squared(Y_star):
 	
 	v_MOND_sq = v_N_sq * np.sqrt(0.5 + 0.5 * np.sqrt(1 + (2 * a0 / a_N)**2))
 	return v_MOND_sq
-
-galaxies = ['NGC5585', 'UGC05764']
 
 def parameters(df, GALAXY_NAME, values):
 	data = df[df['Galaxy'] == GALAXY_NAME]
@@ -109,6 +106,6 @@ for GALAXY_NAME in tqdm(os.listdir(path)):
 
 	plot_models("MOND")
 	
-	plt.savefig("/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/de2/" + GALAXY_NAME + ' all_models.pdf')
+	plt.savefig(GALAXY_NAME + ' all_models.pdf')
 	plt.close()
 
