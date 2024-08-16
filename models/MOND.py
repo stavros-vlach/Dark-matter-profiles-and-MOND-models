@@ -69,14 +69,9 @@ def newtonian_acceleration(r, Y_star):
 	a_N = v_N_sq / r
 	return a_N
     
-def mond_acceleration(r, v_disk_sq, v_bulge_sq, v_gas_sq, Y_star, a_N):
-    a = a_N * np.sqrt(0.5 + 0.5 * np.sqrt(1 + (2 * a0 / a_N)**2))
-    return a
-    
 def mond_velocity_squared(r, v_disk_sq, v_bulge_sq, v_gas_sq, Y_star):
 	v_N_sq = v_newtonian_square(Y_star)
 	a_N = newtonian_acceleration(r, Y_star)
-	#a = mond_acceleration(r, v_disk_sq, v_bulge_sq, v_gas_sq, Y_star, a_N)
 	v_MOND_sq = v_N_sq * np.sqrt(0.5 + 0.5 * np.sqrt(1 + (2 * a0 / a_N)**2))
 	return v_MOND_sq
 	
