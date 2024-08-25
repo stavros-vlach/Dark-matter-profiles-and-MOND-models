@@ -6,7 +6,7 @@ and (b) to fit them on the SPARC dataset along with DM models, aiming to (c) com
 
 # a. Compilation of Modified gravity models
 -Fotis: This is mine, essentially a list of papers where velocity curves are extracted/presented-
-1. Make a list of papers and start writing some details for each model
+1. Make a list of papers and start writing some details for each model - Done
 2. Implement each of them.
 3. Test the implementation.
 
