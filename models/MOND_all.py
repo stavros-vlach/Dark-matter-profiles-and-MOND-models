@@ -10,6 +10,7 @@ import scipy
 from tqdm import tqdm
 from scipy.special import gamma, gammainc
 import os
+import csv
 
 labels = ["Galaxy",
 	"Hubble Type",
@@ -55,7 +56,7 @@ def mond_velocity_squared(Y_star):
 	
 def log_prior(Y_star):
 	"""Define the log prior."""
-	if 0 < Y_star < 1:
+	if 0 < Y_star < 10.0:
 		return 0.0
 	return -np.inf
 
@@ -71,7 +72,7 @@ def log_probability(theta):
 	"""Define the log probability function for emcee."""
 	Y_star = theta
 	lp = log_prior(Y_star)
-	if not np.isfinite(lp):
+	if not np.isfinite(lp) or not np.isfinite(lp):
 		return -np.inf
 	return lp + log_likelihood(theta)
    
@@ -83,94 +84,96 @@ def chi_square(theta):
 	return chi_sq / (len(r) - len(theta))
 
 #bounds for differential_evolution
-bounds = [(0, 2)]
+bounds = [(0, 10.0)]
 
 #parameters for emcee
 ndim = 1
 nwalkers = 80
 nsteps = 200
-
-path = "/Rotmod_LTG/"
-for GALAXY_NAME in os.listdir(path):
-	name = path + GALAXY_NAME
-	R, V, Verr, Vgas, Vbul, Vdisk = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5))
-	data_length = len(R)
+with open('parameters_MOND.csv','w') as testfile:
+	csv_writer=csv.writer(testfile)
+	csv_writer.writerow(["Galaxy", "Y*", "Y*_err"])
 	
-	GALAXY_NAME = GALAXY_NAME[:-len("_rotmod.dat")]
+	path = "/Rotmod_LTG/"
+	for GALAXY_NAME in os.listdir(path):
+		name = path + GALAXY_NAME
+		R, V, Verr, Vgas, Vbul, Vdisk = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5))
+		data_length = len(R)
+		
+		GALAXY_NAME = GALAXY_NAME[:-len("_rotmod.dat")]
+		
+		# The full dataset of http://astroweb.cwru.edu/SPARC/SPARC_Lelli2016c.mrt,
+		# with minor changes for parsing
+		data = pd.read_csv('data.txt', delimiter=';', skiprows=98, names=labels)
+
+		data = data[data['Galaxy'] == GALAXY_NAME]
+		i_set = data["Inclination (deg)"].to_numpy()[0] * np.pi / 180
+		err_i_set = data["Mean Inc error (deg)"].to_numpy()[0] * np.pi / 180
+		D_quot = data["Distance (Mpc)"].to_numpy()[0]
+		err_D_quot = data["Mean D error (Mpc)"].to_numpy()[0]
+		L_tot = data["Total Luminosity at [3.6](10+9solLum)"].to_numpy()[0]
+
+		Lb = pd.read_csv('Lbul.txt', delimiter = '\s+', skiprows=7, names=['Galaxy', 'Lbul (10^9 Lsun)'])
+		Lb = Lb[Lb['Galaxy'] == GALAXY_NAME]
+		L_bul = Lb['Lbul (10^9 Lsun)'].to_numpy()[0]
+
+		r = np.array(R)
+		v_obs = np.array(V)
+		v_err = np.array(Verr)
+		v_disk_sq = np.array(Vdisk)**2
+		v_bulge_sq = np.array(Vbul)**2
+		v_gas_sq = np.array(Vgas)**2
+		
+		result = differential_evolution(chi_square, bounds, args=())
+		Y_star_best = result.x[0]
+		
+		v_MOND_sq_best = mond_velocity_squared(Y_star_best)
+		v_MOND_best = np.sqrt(v_MOND_sq_best)
+
+		plt.plot(r, v_MOND_best, label = 'Best-fit model before emcee', color = 'red')
+		plt.errorbar(r, v_obs, yerr=v_err, fmt='o', label='Observed data')
+		plt.ylabel('$V(km/s)$')
+		plt.xlabel('$R(kpc)$')
+		plt.legend()
+		plt.savefig(GALAXY_NAME + ' fit_results-beforeMCMC.pdf')
+		plt.close()
+
+		# Set up the sampler
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability, args=())
+
+		# Initialize the walkers
+		pos = Y_star_best + 1e-2 * np.random.randn(nwalkers, ndim)
+
+		# Run the sampler
+		sampler.run_mcmc(pos, nsteps, progress=True)
+
+		# Extract the samples
+		samples = sampler.get_chain(discard=100, thin=10, flat=True)
+
+		# Create a corner plot
+		fig = corner.corner(samples, labels=["$Y_\\star$"], truths=[Y_hat_star])
+		fig.savefig(GALAXY_NAME + "fit_corner.pdf")
+		plt.close()
+
+		Y_star_mcmc = np.percentile(samples, 50, axis=0)
+		Y_star_mcmc_err = np.percentile(samples[:, 0], [16, 84])
 	
-	# The full dataset of http://astroweb.cwru.edu/SPARC/SPARC_Lelli2016c.mrt,
-	# with minor changes for parsing
-	data = pd.read_csv('data.txt', delimiter=';', skiprows=98, names=labels)
+		csv_writer.writerow([GALAXY_NAME, float(Y_star_mcmc), Y_star_mcmc_err])
 
-	data = data[data['Galaxy'] == GALAXY_NAME]
-	i_set = data["Inclination (deg)"].to_numpy()[0] * np.pi / 180
-	err_i_set = data["Mean Inc error (deg)"].to_numpy()[0] * np.pi / 180
-	D_quot = data["Distance (Mpc)"].to_numpy()[0]
-	err_D_quot = data["Mean D error (Mpc)"].to_numpy()[0]
-	L_tot = data["Total Luminosity at [3.6](10+9solLum)"].to_numpy()[0]
+		# Extract best-fit parameters from MCMC
+		Y_star_mcmc = np.median(samples, axis=0)
 
-	Lb = pd.read_csv('Lbul.txt', delimiter = '\s+', skiprows=7, names=['Galaxy', 'Lbul (10^9 Lsun)'])
-	Lb = Lb[Lb['Galaxy'] == GALAXY_NAME]
-	L_bul = Lb['Lbul (10^9 Lsun)'].to_numpy()[0]
+		# Compute model velocities with best-fit parameters from MCMC
+		v_model_sq_mcmc = mond_velocity_squared(Y_star_mcmc)
+		v_model_mcmc = np.sqrt(v_model_sq_mcmc)
 
-	r = np.array(R)
-	v_obs = np.array(V)
-	v_err = np.array(Verr)
-	v_disk_sq = np.array(Vdisk)**2
-	v_bulge_sq = np.array(Vbul)**2
-	v_gas_sq = np.array(Vgas)**2
-	
-	result = differential_evolution(chi_square, bounds, args=())
-	Y_star_best = result.x[0]
-	print(result)
-	v_MOND_sq_best = mond_velocity_squared(Y_star_best)
-	v_MOND_best = np.sqrt(v_MOND_sq_best)
+		# Plot the data
+		plt.errorbar(r, v_obs, yerr=v_err, fmt='o', label='Observed data')
 
-	plt.plot(r, v_MOND_best, label = 'Best-fit model before emcee', color = 'red')
-	plt.errorbar(r, v_obs, yerr=v_err, fmt='o', label='Observed data')
-	plt.ylabel('$V(km/s)$')
-	plt.xlabel('$R(kpc)$')
-	plt.legend()
-	plt.savefig(GALAXY_NAME + ' fit_results-beforeMCMC.pdf')
-	plt.close()
-
-	# Set up the sampler
-	sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability, args=())
-
-	# Initialize the walkers
-	pos = Y_star_best + 1e-2 * np.random.randn(nwalkers, ndim)
-
-	# Run the sampler
-	sampler.run_mcmc(pos, nsteps, progress=True)
-
-	# Extract the samples
-	samples = sampler.get_chain(discard=100, thin=10, flat=True)
-
-	# Create a corner plot
-	fig = corner.corner(samples, labels=["$Y_\\star$"], truths=[Y_hat_star])
-	fig.savefig(GALAXY_NAME + "fit_corner.pdf")
-	plt.close()
-
-	Y_star_mcmc = np.percentile(samples, 50, axis=0)
-	Y_star_mcmc_err = np.percentile(samples[:, 0], [16, 84])
-
-	print("Best-fit parameters and their 1-sigma intervals from MCMC:")
-	print("Y_star: ", Y_star_mcmc, "(+ ", Y_star_mcmc_err[1] - Y_star_mcmc, " - ", Y_star_mcmc - Y_star_mcmc_err[0], " )")
-
-	# Extract best-fit parameters from MCMC
-	Y_star_mcmc = np.median(samples, axis=0)
-
-	# Compute model velocities with best-fit parameters from MCMC
-	v_model_sq_mcmc = mond_velocity_squared(Y_star_mcmc)
-	v_model_mcmc = np.sqrt(v_model_sq_mcmc)
-
-	# Plot the data
-	plt.errorbar(r, v_obs, yerr=v_err, fmt='o', label='Observed data')
-
-	# Plot the model
-	plt.plot(r, v_model_mcmc, label='Best-fit model after emcee', color='red')
-	plt.xlabel('Radius (kpc)')
-	plt.ylabel('Velocity (km/s)')
-	plt.legend()
-	plt.savefig(GALAXY_NAME + 'fit_results-afterMCMC.pdf')
-	plt.close()
+		# Plot the model
+		plt.plot(r, v_model_mcmc, label='Best-fit model after emcee', color='red')
+		plt.xlabel('Radius (kpc)')
+		plt.ylabel('Velocity (km/s)')
+		plt.legend()
+		plt.savefig(GALAXY_NAME + 'fit_results-afterMCMC.pdf')
+		plt.close()
