@@ -4,12 +4,12 @@ import corner
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import matplotlib
 from scipy.optimize import differential_evolution
 import scipy
 from scipy.optimize import minimize
 from tqdm import tqdm
 import os
+import csv
 
 labels = ["Galaxy",
 	"Hubble Type",
@@ -73,7 +73,7 @@ def log_probability(theta):
 	"""Define the log probability function for emcee."""
 	Y_star, logrho0, logRs = theta
 	lp = log_prior(Y_star, logrho0, logRs)
-	if not np.isfinite(lp):
+	if np.any(np.isnan(log_likelihood(theta))) or not np.isfinite(lp):
 		return -np.inf
 	return lp + log_likelihood(theta)
 
@@ -92,96 +92,99 @@ bounds = [(0, 1), (0, 9), (0, 6)]
 
 #parameters for emcee
 ndim = 3
-nwalkers = 100
-nsteps = 1000
+nwalkers = 80
+nsteps = 200
 
-path = "/Rotmod_LTG/"
-for GALAXY_NAME in os.listdir(path):
-	name = path + GALAXY_NAME
-	R, V, Verr, Vgas, Vbul, Vdisk = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5))
-	data_length = len(R)
+with open('parameters_NFW.csv','w') as testfile:
+	csv_writer=csv.writer(testfile)
+	csv_writer.writerow(["Galaxy", "Y*", "rho0", "Rs", "Y*_error", "rho0_error", "Rs_error"])
 	
-	GALAXY_NAME = GALAXY_NAME[:-len("_rotmod.dat")]
+	path = "/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/Rotmod_LTG/"
+	for GALAXY_NAME in os.listdir(path):
+		name = path + GALAXY_NAME
+		R, V, Verr, Vgas, Vbul, Vdisk = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5))
+		data_length = len(R)
+		
+		GALAXY_NAME = GALAXY_NAME[:-len("_rotmod.dat")]
 
-	# The full dataset of http://astroweb.cwru.edu/SPARC/SPARC_Lelli2016c.mrt,
-	# with minor changes for parsing
-	data = pd.read_csv('data.txt', delimiter=';', skiprows=98, names=labels)
+		# The full dataset of http://astroweb.cwru.edu/SPARC/SPARC_Lelli2016c.mrt,
+		# with minor changes for parsing
+		data = pd.read_csv('data.txt', delimiter=';', skiprows=98, names=labels)
 
-	data = data[data['Galaxy'] == GALAXY_NAME]
-	i_set = data["Inclination (deg)"].to_numpy()[0] * np.pi / 180
-	err_i_set = data["Mean Inc error (deg)"].to_numpy()[0] * np.pi / 180
-	D_quot = data["Distance (Mpc)"].to_numpy()[0]
-	err_D_quot = data["Mean D error (Mpc)"].to_numpy()[0]
-	L_tot = data["Total Luminosity at [3.6](10+9solLum)"].to_numpy()[0]
+		data = data[data['Galaxy'] == GALAXY_NAME]
+		i_set = data["Inclination (deg)"].to_numpy()[0] * np.pi / 180
+		err_i_set = data["Mean Inc error (deg)"].to_numpy()[0] * np.pi / 180
+		D_quot = data["Distance (Mpc)"].to_numpy()[0]
+		err_D_quot = data["Mean D error (Mpc)"].to_numpy()[0]
+		L_tot = data["Total Luminosity at [3.6](10+9solLum)"].to_numpy()[0]
 
-	Lb = pd.read_csv('Lbul.txt', delimiter = '\s+', skiprows=7, names=['Galaxy', 'Lbul (10^9 Lsun)'])
-	Lb = Lb[Lb['Galaxy'] == GALAXY_NAME]
-	L_bul = Lb['Lbul (10^9 Lsun)'].to_numpy()[0]
+		Lb = pd.read_csv('Lbul.txt', delimiter = '\s+', skiprows=7, names=['Galaxy', 'Lbul (10^9 Lsun)'])
+		Lb = Lb[Lb['Galaxy'] == GALAXY_NAME]
+		L_bul = Lb['Lbul (10^9 Lsun)'].to_numpy()[0]
 
-	# Observed data and errors
-	r = np.array(R)
-	v_obs = np.array(V)
-	v_err = np.array(Verr)
-	v_disk_sq = np.array(Vdisk)**2
-	v_bulge_sq = np.array(Vbul)**2
-	v_gas_sq = np.array(Vgas)**2
-	Y_hat_star = 0.5
-	sigma_Y_star = 0.25 * Y_hat_star
+		# Observed data and errors
+		r = np.array(R)
+		v_obs = np.array(V)
+		v_err = np.array(Verr)
+		v_disk_sq = np.array(Vdisk)**2
+		v_bulge_sq = np.array(Vbul)**2
+		v_gas_sq = np.array(Vgas)**2
 
-	# Perform differential evolution optimization
-	result = differential_evolution(chi_square, bounds)
-	best_fit_params = result.x	
-	print(result)
+		# Perform differential evolution optimization
+		result = differential_evolution(chi_square, bounds)
+		best_fit_params = result.x
 
-	Y_star_best, rho0_best, Rs_best = best_fit_params
-	v_model_sq_best = total_velocity_squared(Y_star_best, rho0_best, Rs_best)
-	v_model_best = np.sqrt(v_model_sq_best)
+		Y_star_best, rho0_best, Rs_best = best_fit_params
+		v_model_sq_best = total_velocity_squared(Y_star_best, rho0_best, Rs_best)
+		v_model_best = np.sqrt(v_model_sq_best)
 
-	plt.plot(r, v_model_best, label = 'Best-fit model before emcee', color = 'red')
-	plt.errorbar(r, v_obs, yerr=v_err, fmt='o', label='Observed data')
-	plt.ylabel('$V(km/s)$')
-	plt.xlabel('$R(kpc)$')
-	plt.legend()
-	plt.savefig(GALAXY_NAME + ' fit_results-beforeMCMC.pdf')
-	plt.close()
+		plt.plot(r, v_model_best, label = 'Best-fit model before emcee', color = 'red')
+		plt.errorbar(r, v_obs, yerr=v_err, fmt='o', label='Observed data')
+		plt.ylabel('$V(km/s)$')
+		plt.xlabel('$R(kpc)$')
+		plt.legend()
+		plt.savefig("/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/de/" + GALAXY_NAME + ' fit_results-beforeMCMC.pdf')
+		plt.close()
 
-	# Initialize the walkers
-	pos = best_fit_params + 1e-2 * np.random.randn(nwalkers, ndim)
+		# Initialize the walkers
+		pos = best_fit_params + 1e-2 * np.random.randn(nwalkers, ndim)
 
-	# Set up the sampler
-	sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability)
-	
-	# Run the sampler
-	sampler.run_mcmc(pos, nsteps, progress=True)
+		# Set up the sampler
+		sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability)
+		
+		# Run the sampler
+		sampler.run_mcmc(pos, nsteps, progress=True)
 
-	# Extract the samples
-	samples = sampler.get_chain(discard=100, thin=10, flat=True)
+		# Extract the samples
+		samples = sampler.get_chain(discard=100, thin=10, flat=True)
 
-	fig = corner.corner(samples, labels=["$Y_\\star$", "$log\\rho_0$", "$logR_s$"], truths=[Y_hat_star, 0, 0])
-	fig.savefig(GALAXY_NAME + "fit_corner.pdf")
-	plt.close()
+		fig = corner.corner(samples, labels=["$Y_\\star$", "$log\\rho_0$", "$logR_s$"], truths=[Y_hat_star, 0, 0])
+		fig.savefig("/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/de/" + GALAXY_NAME + "fit_corner.pdf")
+		plt.close()
 
-	Y_star_mcmc, logrho0_mcmc, logRs_mcmc = np.percentile(samples, 50, axis=0)
-	Y_star_mcmc_err = np.percentile(samples[:, 0], [16, 84])
-	logrho0_mcmc_err = np.percentile(samples[:, 1], [16, 84])
-	logRs_mcmc_err = np.percentile(samples[:, 2], [16, 84])
+		Y_star_mcmc, logrho0_mcmc, logRs_mcmc = np.percentile(samples, 50, axis=0)
+		Y_star_mcmc_err = np.percentile(samples[:, 0], [16, 84])
+		logrho0_mcmc_err = np.percentile(samples[:, 1], [16, 84])
+		logRs_mcmc_err = np.percentile(samples[:, 2], [16, 84])
 
 
-	print("Best-fit parameters and their 1-sigma intervals from MCMC:")
-	print(f"Y_star: {Y_star_mcmc:.4f} (+{Y_star_mcmc_err[1]-Y_star_mcmc:.4f}, -{Y_star_mcmc-	Y_star_mcmc_err[0]:.4f})")
-	print(f"rho0: {10**logrho0_mcmc:.4e} (+{10**logrho0_mcmc_err[1]-10**logrho0_mcmc:.4e}, -{10**logrho0_mcmc-10**logrho0_mcmc_err[0]:.4e})")
-	print(f"Rs: {10**logRs_mcmc:.4f} (+{10**logRs_mcmc_err[1]-10**logRs_mcmc:.4f}, -{10**logRs_mcmc-10**logRs_mcmc_err[0]:.4f})")
+		print("Best-fit parameters and their 1-sigma intervals from MCMC:")
+		print(f"Y_star: {Y_star_mcmc:.4f} (+{Y_star_mcmc_err[1]-Y_star_mcmc:.4f}, -{Y_star_mcmc-	Y_star_mcmc_err[0]:.4f})")
+		print(f"rho0: {10**logrho0_mcmc:.4e} (+{10**logrho0_mcmc_err[1]-10**logrho0_mcmc:.4e}, -{10**logrho0_mcmc-10**logrho0_mcmc_err[0]:.4e})")
+		print(f"Rs: {10**logRs_mcmc:.4f} (+{10**logRs_mcmc_err[1]-10**logRs_mcmc:.4f}, -{10**logRs_mcmc-10**logRs_mcmc_err[0]:.4f})")
 
-	Y_star_mcmc, logrho0_mcmc, logRs_mcmc = np.median(samples, axis=0)
+		csv_writer.writerow([GALAXY_NAME, Y_star_mcmc, 10 ** logrho0_mcmc, 10 ** logRs_mcmc, Y_star_mcmc_err, 10 ** logrho0_mcmc_err, 10 ** logRs_mcmc_err])
+		
+		Y_star_mcmc, logrho0_mcmc, logRs_mcmc = np.median(samples, axis=0)
 
-	# Compute model velocities with best-fit parameters from MCMC
-	v_model_sq_mcmc = total_velocity_squared(Y_star_mcmc, logrho0_mcmc, logRs_mcmc)
-	v_model_mcmc = np.sqrt(v_model_sq_mcmc)
+		# Compute model velocities with best-fit parameters from MCMC
+		v_model_sq_mcmc = total_velocity_squared(Y_star_mcmc, logrho0_mcmc, logRs_mcmc)
+		v_model_mcmc = np.sqrt(v_model_sq_mcmc)
 
-	plt.errorbar(r, v_obs, yerr=v_err, fmt='o', label='Observed data')
-	plt.plot(r, v_model_best, label='Best-fit model after emcee', color='red')
-	plt.xlabel('Radius (kpc)')
-	plt.ylabel('Velocity (km/s)')
-	plt.legend()
-	plt.savefig(GALAXY_NAME + ' fit_results-afterMCMC.pdf')
-	plt.close()
+		plt.errorbar(r, v_obs, yerr=v_err, fmt='o', label='Observed data')
+		plt.plot(r, v_model_mcmc, label='Best-fit model after emcee', color='red')
+		plt.xlabel('Radius (kpc)')
+		plt.ylabel('Velocity (km/s)')
+		plt.legend()
+		plt.savefig("/media/stavros/aaf194dd-624d-4ece-8e56-395e27a93185/Pythonproject/de/" + GALAXY_NAME + ' fit_results-afterMCMC.pdf')
+		plt.close()
