@@ -37,45 +37,28 @@ G = 4.3e-6
 Y_hat_star = 0.5
 sigma_Y_star = 0.25 * Y_hat_star
 #Model as in https://iopscience.iop.org/article/10.3847/2041-8213/ac1bb7
-
-def pISO_halo(logrho0, logRc):
-	rho0 = 10 ** logrho0
-	Rc = 10 ** logRc
-	v_halo_sq = 4 * np.pi * G * rho0 * Rc ** 2 * ( 1 - (Rc / r) * np.arctan(r / Rc))
-	return v_halo_sq
-	
 def total_velocity_squared(Y_star, logrho0, logRc):
 	rho0 = 10 ** logrho0
 	Rc = 10 ** logRc
 	v_star_sq = Y_star * v_disk_sq + 1.4 * Y_star * v_bulge_sq
-	v_halo_sq = pISO_halo(logrho0, logRc)
+	v_halo_sq = 4 * np.pi * G * rho0 * Rc ** 2 * ( 1 - (Rc / r) * np.arctan(r / Rc))
 	v_total_sq = v_star_sq + v_gas_sq + v_halo_sq
 	return v_total_sq
-	
-def log_prior(Y_star, logrho0, logRs):
-	"""Define the log prior."""
-	rho0 = 10 ** logrho0
-	Rs = 10 ** logRs
-	if 0 < Y_star < 1 and 0 < rho0 < 1e9 and 0 < Rs < 1e6:
-	    return 0.0
-	return -np.inf
-
-def log_likelihood(theta):
-	"""Define the log likelihood."""
-	Y_star, logrho0, logRc = theta
-	v_model_sq = total_velocity_squared(Y_star, logrho0, logRc)
-	chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
-	chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
-	return -0.5 * chi_sq
 
 def log_probability(theta):
 	"""Define the log probability function for emcee."""
 	Y_star, logrho0, logRc = theta
-	lp = log_prior(Y_star, logrho0, logRc)
-	if not np.isfinite(lp) or not np.isfinite(lp):
+	rho0 = 10 ** logrho0
+	Rc = 10 ** logRc
+	if not(0 < Y_star < 1) or not(0 < rho0 < 1e9) or not(0 < Rc < 1e6):
+                return -np.inf
+	v_model_sq = total_velocity_squared(Y_star, logrho0, logRc)
+	chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
+	chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
+	chi_sq *= 0.5
+	if not np.isfinite(chi_sq):
 	    return -np.inf
-	return lp + log_likelihood(theta)
-
+	return chi_sq
 
 def chi_square(theta):
 	"""Calculate the chi-square value for the model fit."""
