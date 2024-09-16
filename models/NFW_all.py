@@ -37,45 +37,30 @@ Y_hat_star = 0.5
 sigma_Y_star = 0.25 * Y_hat_star
 
 #Model as in https://iopscience.iop.org/article/10.3847/2041-8213/ac1bb7
-
-def calc_v_NFW_halo(r, logrho0, logRs):
+def total_velocity_squared(Y_star, logrho0, logRs):
 	rho0 = 10 ** logrho0
 	Rs = 10 ** logRs
 	x = r / Rs
 	M_NFW = 4 * np.pi * rho0 * Rs**3 * (np.log(1 + x) - x / (1 + x))
 	v_halo_sq = G * M_NFW / r
-	return v_halo_sq
-
-def total_velocity_squared(Y_star, logrho0, logRs):
-
 	v_star_sq = Y_star * v_disk_sq + 1.4 * Y_star * v_bulge_sq
-	v_halo_sq = calc_v_NFW_halo(r, logrho0, logRs)
 	v_total_sq = v_star_sq + v_gas_sq + v_halo_sq
 	return v_total_sq
 
-def log_prior(Y_star, logrho0, logRs):
-	rho0 = 10 ** logrho0
-	Rs = 10 ** logRs
-	"""Define the log prior."""
-	if 0 < Y_star < 1 and 0 < rho0 < 1e9 and 0 < Rs < 1e6:
-		return 0.0
-	return -np.inf
-
-def log_likelihood(theta):
-	"""Define the log likelihood."""
-	Y_star, logrho0, logRs = theta
-	v_model_sq = total_velocity_squared(Y_star, logrho0, logRs)
-	chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
-	chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
-	return -0.5 * chi_sq
-
 def log_probability(theta):
-	"""Define the log probability function for emcee."""
-	Y_star, logrho0, logRs = theta
-	lp = log_prior(Y_star, logrho0, logRs)
-	if np.any(np.isnan(log_likelihood(theta))) or not np.isfinite(lp):
-		return -np.inf
-	return lp + log_likelihood(theta)
+        """Define the log probability function for emcee."""
+        Y_star, logrho0, logRs = theta
+        rho0 = 10 ** logrho0
+        Rs = 10 ** logRs
+        if not(0 < Y_star < 1) or not(0 < rho0 < 1e9) or not(0 < Rs < 1e6):
+                return -np.inf
+        v_model_sq = total_velocity_squared(Y_star, logrho0, logRs)
+        chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
+        chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
+        chi_sq *= -0.5
+        if np.any(np.isnan(chi_sq)):
+                return -np.inf
+        return chi_sq
 
 
 def chi_square(theta):
@@ -166,12 +151,6 @@ with open('parameters_NFW.csv','w') as testfile:
 		Y_star_mcmc_err = np.percentile(samples[:, 0], [16, 84])
 		logrho0_mcmc_err = np.percentile(samples[:, 1], [16, 84])
 		logRs_mcmc_err = np.percentile(samples[:, 2], [16, 84])
-
-
-		print("Best-fit parameters and their 1-sigma intervals from MCMC:")
-		print(f"Y_star: {Y_star_mcmc:.4f} (+{Y_star_mcmc_err[1]-Y_star_mcmc:.4f}, -{Y_star_mcmc-	Y_star_mcmc_err[0]:.4f})")
-		print(f"rho0: {10**logrho0_mcmc:.4e} (+{10**logrho0_mcmc_err[1]-10**logrho0_mcmc:.4e}, -{10**logrho0_mcmc-10**logrho0_mcmc_err[0]:.4e})")
-		print(f"Rs: {10**logRs_mcmc:.4f} (+{10**logRs_mcmc_err[1]-10**logRs_mcmc:.4f}, -{10**logRs_mcmc-10**logRs_mcmc_err[0]:.4f})")
 
 		csv_writer.writerow([GALAXY_NAME, Y_star_mcmc, 10 ** logrho0_mcmc, 10 ** logRs_mcmc, Y_star_mcmc_err, 10 ** logrho0_mcmc_err, 10 ** logRs_mcmc_err])
 		
