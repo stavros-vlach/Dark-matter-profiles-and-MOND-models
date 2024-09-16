@@ -38,42 +38,29 @@ Y_hat_star = 0.5
 sigma_Y_star = 0.25 * Y_hat_star
 
 #Model as in https://iopscience.iop.org/article/10.3847/2041-8213/ac1bb7
-def einasto_velocity_squared(logrho0, logRs, a):
+def total_velocity_squared(Y_star, logrho0, logRs, a):
     rho0 = 10 ** logrho0
     Rs = 10 ** logRs
     prefactor = 4 * np.pi * rho0 * Rs**3 * np.exp(2/a) * (2/a)**(-3/a) / a
     M_einasto = prefactor * gamma(3/a) * gammainc(3/a, 2/a * (r/Rs)**a)
-    return G * M_einasto / r
-
-
-def total_velocity_squared(Y_star, logrho0, logRs, a):
+    v_halo_sq = G * M_einasto / r
     v_star_sq = Y_star * v_disk_sq + 1.4 * Y_star * v_bulge_sq
-    v_halo_sq = einasto_velocity_squared(logrho0, logRs, a)
     return v_star_sq + v_gas_sq + v_halo_sq
-
-def log_prior(Y_star, logrho0, logRs, a):
-    """Define the log prior."""
-    rho0 = 10 ** logrho0
-    Rs = 10 ** logRs
-    if 0 < Y_star < 1 and 0 < rho0 < 1e9 and 0 < Rs < 1e8 and 0 < a < 20:
-        return 0.0
-    return -np.inf
-
-def log_likelihood(theta):
-    """Define the log likelihood."""
-    Y_star, logrho0, logRs, a = theta
-    v_model_sq = total_velocity_squared(Y_star, logrho0, logRs, a)
-    chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
-    chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
-    return -0.5 * chi_sq
 
 def log_probability(theta):
     """Define the log probability function for emcee."""
     Y_star, logrho0, logRs, a = theta
-    lp = log_prior(Y_star, logrho0, logRs, a)
-    if np.any(np.isnan(log_likelihood(theta))) or not np.isfinite(lp):
-   		return -np.inf
-    return lp + log_likelihood(theta)
+    rho0 = 10 ** logrho0
+    Rs = 10 ** logRs
+    if not(0 < Y_star < 1) or not(0 < rho0 < 1e9) or not(0 < Rs < 1e8) or not(0 < a < 20):
+        return -np.inf
+    v_model_sq = total_velocity_squared(Y_star, logrho0, logRs, a)
+    chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
+    chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
+    chi_sq *= -0.5
+    if np.any(np.isnan(chi_sq)):
+        return -np.inf
+    return chi_sq
 
 def chi_square(theta):
     Y_star, logrho0, logRs, a = theta
@@ -98,7 +85,7 @@ with open('parameters_Einasto.csv','w') as testfile:
 	path = "/Rotmod_LTG/"
 	for GALAXY_NAME in os.listdir(path):
 		name = path + GALAXY_NAME
-		R, V, Verr, Vgas, Vbul, Vdisk = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5))
+		R, V, Verr, Vgas, Vbul, Vdisk = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5), encoding='us-ascii')
 		data_length = len(R)
 		
 		GALAXY_NAME = GALAXY_NAME[:-len("_rotmod.dat")]
