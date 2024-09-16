@@ -38,43 +38,26 @@ Y_hat_star = 0.5
 sigma_Y_star = 0.25 * Y_hat_star
 
 #Model as in https://iopscience.iop.org/article/10.3847/2041-8213/ac1bb7
-
-def v_newtonian_square(Y_star):
-	v_star_sq = Y_star * v_disk_sq + 1.4 * Y_star * v_bulge_sq
-	return v_star_sq + v_gas_sq
-
-def newtonian_acceleration(Y_star):
-	v_N_sq = v_newtonian_square(Y_star)
-	a_N = v_N_sq / r
-	return a_N
-	
 def mond_velocity_squared(Y_star):
-	v_N_sq = v_newtonian_square(Y_star)
-	a_N = newtonian_acceleration(Y_star)
-	v_MOND_sq = v_N_sq * np.sqrt(0.5 + 0.5 * np.sqrt(1 + (2 * a0 / a_N)**2))
-	return v_MOND_sq
-	
-def log_prior(Y_star):
-	"""Define the log prior."""
-	if 0 < Y_star < 10.0:
-		return 0.0
-	return -np.inf
-
-def log_likelihood(theta):
-	"""Define the log likelihood."""
-	Y_star = theta
-	v_model_sq = mond_velocity_squared(Y_star)
-	chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
-	chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
-	return -0.5 * chi_sq
+        v_star_sq = Y_star * v_disk_sq + 1.4 * Y_star * v_bulge_sq
+        v_N_sq = v_star_sq + v_gas_sq
+        a_N = v_N_sq / r
+        v_MOND_sq = v_N_sq * np.sqrt(0.5 + 0.5 * np.sqrt(1 + (2 * a0 / a_N)**2))
+        return v_MOND_sq
 
 def log_probability(theta):
-	"""Define the log probability function for emcee."""
-	Y_star = theta
-	lp = log_prior(Y_star)
-	if not np.isfinite(lp) or not np.isfinite(lp):
-		return -np.inf
-	return lp + log_likelihood(theta)
+        """Define the log probability function for emcee."""
+        Y_star = theta
+        if not(0 < Y_star < 10.0):
+                return -np.inf
+        v_model_sq = mond_velocity_squared(Y_star)
+        chi_sq = np.sum(((v_obs**2 - v_model_sq) / v_err**2) ** 2)
+        chi_sq += ((Y_star - Y_hat_star) / sigma_Y_star) ** 2
+        log_likelihood = -0.5 * chi_sq
+        if not np.isfinite(log_likelihood):
+                print(1)
+                return -np.inf
+        return log_likelihood
    
 def chi_square(theta):
 	Y_star = theta
