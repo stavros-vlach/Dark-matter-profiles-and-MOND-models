@@ -145,8 +145,6 @@ with open('parameters_pISO.csv','w') as testfile:
 		Y_star_mcmc_err = np.percentile(samples[:, 0], [16, 84])
 		logrho0_mcmc_err = np.percentile(samples[:, 1], [16, 84])
 		logRc_mcmc_err = np.percentile(samples[:, 2], [16, 84])
-
-		csv_writer.writerow([GALAXY_NAME, Y_star_mcmc, 10 ** logrho0_mcmc, 10 ** logRc_mcmc, Y_star_mcmc_err, 10 ** logrho0_mcmc_err, 10 ** logRc_mcmc_err])
 		
 		Y_star_best, logrho0_best, logRc_best = np.median(samples, axis=0)
 		v_model_sq_mcmc = total_velocity_squared(Y_star_best, logrho0_best, logRc_best)
@@ -159,3 +157,8 @@ with open('parameters_pISO.csv','w') as testfile:
 		plt.legend()
 		plt.savefig(GALAXY_NAME + ' fit_results-afterMCMC.pdf')
 		plt.close()
+
+		chi_sq_emcee = np.sum((v_obs - v_model_mcmc) ** 2 / v_err ** 2) / (len(r) - 3)
+                
+                csv_writer.writerow([GALAXY_NAME, Y_star_mcmc, 10 ** logrho0_mcmc, 10 ** logRc_mcmc, Y_star_mcmc_err, 10 ** logrho0_mcmc_err, 10 ** logRc_mcmc_err, chi_sq_emcee])
+                
