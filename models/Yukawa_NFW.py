@@ -98,13 +98,11 @@ ndim = 5
 nwalkers = 500
 nsteps = 1000
 
-chi_sq_emcee = 0
-
 with open('parameters_Yukawa_NFW.csv','w') as testfile:
     csv_writer=csv.writer(testfile)
     csv_writer.writerow(["Galaxy", "Y*_disk", "Y_star_bulge", "M_200", "beta", "lambda", "Y*_disk_error", "Y*_bulge_error", "M_200_error", "beta_error", "lambda_error"])
 
-    path = "/home/stavros/Documents/Pythonproject/Rotmod_LTG/"
+    path = "/Rotmod_LTG/"
     for GALAXY_NAME in os.listdir(path):
         name = path + GALAXY_NAME
         R, V, Verr, Vgas, Vbul, Vdisk = np.loadtxt(name, unpack=True, usecols=(0, 1, 2, 3, 4, 5))
@@ -147,7 +145,7 @@ with open('parameters_Yukawa_NFW.csv','w') as testfile:
         plt.ylabel('$V(km/s)$')
         plt.xlabel('$R(kpc)$')
         plt.legend()
-        plt.savefig("/home/stavros/Documents/Pythonproject/de/" + GALAXY_NAME + ' fit_results-beforeMCMC.pdf')
+        plt.savefig(GALAXY_NAME + ' fit_results-beforeMCMC.pdf')
         plt.close()
 
         # Initialize the walkers
@@ -163,7 +161,7 @@ with open('parameters_Yukawa_NFW.csv','w') as testfile:
         samples = sampler.get_chain(discard=100, thin=10, flat=True)
 
         fig = corner.corner(samples, labels=["$Y^*_{disk}$", "$Y^*_{bulge}$", "$M_{200}$", "$\\beta$", "$\\lambda$"], truths=[0, 0, 0, 0, 0])
-        fig.savefig("/home/stavros/Documents/Pythonproject/de/" + GALAXY_NAME + "fit_corner.pdf")
+        fig.savefig(GALAXY_NAME + "fit_corner.pdf")
         plt.close()
 
         Y_star_disk_mcmc, Y_star_bulge_mcmc, logM_200_mcmcm, beta_mcmc, lambda_mcmc = np.percentile(samples, 50, axis=0)
@@ -182,15 +180,12 @@ with open('parameters_Yukawa_NFW.csv','w') as testfile:
         v_model_sq_mcmc = total_velocity_squared(Y_star_disk_mcmc, Y_star_bulge_mcmc, logM_200_mcmcm, beta_mcmc, lambda_mcmc)
         v_model_mcmc = np.sqrt(v_model_sq_mcmc)
 
-        chi_sq_emcee += np.sum((v_obs - v_model_mcmc) ** 2 / v_err ** 2) / (len(r) - 5)
-
         plt.errorbar(r, v_obs, yerr=v_err, fmt='o', label='Observed data')
         plt.plot(r, v_model_mcmc, label='Best-fit model after emcee', color='red')
         plt.xlabel('Radius (kpc)')
         plt.ylabel('Velocity (km/s)')
         plt.legend()
-        plt.savefig("/home/stavros/Documents/Pythonproject/de/" + GALAXY_NAME + ' fit_results-afterMCMC.pdf')
+        plt.savefig(GALAXY_NAME + ' fit_results-afterMCMC.pdf')
         plt.close()
 
-print(chi_sq_emcee / 175)
 
