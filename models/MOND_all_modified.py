@@ -165,7 +165,7 @@ with open('parameters_MOND.csv','w') as testfile:
 
 		#Bayesian evidense
 		log_z = np.median(dsampler.results.logz)
-		sigma_log_z = np.percentile(resampled_samples[:, 0], [16, 84])
+		sigma_log_z = np.percentile(log_z, [16, 84])
 
 		# Create a corner plot
 		fig = corner.corner(resampled_samples, labels=["$Y_\\star$"])
